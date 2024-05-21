@@ -1,0 +1,31 @@
+{
+  "name": "qunemedia/chatgpt-connector",
+  "version": "0.0.1",
+  "description": "QuneMedia | ChatGPT Connector",
+  "type": "library",
+  "keywords": [
+    "qunemedia",
+    "kussin",
+    "chatgpt",
+    "open.ai"
+  ],
+  "homepage": "https://www.qunemedia.com/",
+  "license": [
+    "EULA"
+  ],
+  "authors": [
+    {
+      "name": "Daniel Kussin",
+      "email": "daniel.kussin@kussin.de",
+      "homepage": "https://www.kussin.de/",
+      "role": "Project Owner"
+    }
+  ],
+  "support": {
+    "email": "info@qunemedia.com",
+    "issues": "https://github.com/qunemedia/chatgpt-connector/issues"
+  },
+  "require": {
+    "php": ">=7.4"
+  }
+}
