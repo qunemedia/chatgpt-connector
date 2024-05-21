@@ -19,7 +19,7 @@ For the purposes of this End-User License Agreement:
 - __Application__ means the software program provided by the Company downloaded by You to a Device, named QuneMedia | ChatGPT Connector
 
 
-- __Company__ (referred to as either "the Company", "We", "Us" or "Our" in this Agreement) refers to Kussin | eCommerce und Online-Marketing GmbH, Fahltskamp 3, 25421 Pinneberg.
+- __Company__ (referred to as either "the Company", "We", "Us" or "Our" in this Agreement) refers to QuneMedia GmbH, Fahltskamp 3, 25421 Pinneberg.
 - __Content__ refers to content such as text, images, or other information that can be posted, uploaded, linked to or otherwise made available by You, regardless of the form of that content.
 - __Country__ refers to: Schleswig-Holstein,  Germany
 - __Device__ means any device that can access the Application such as a computer, a cellphone or a digital tablet.
