@@ -18,17 +18,30 @@ class ChatGPT
 
     const MAX_CONTINUE_REQUESTS = 3;
 
-    protected $_API_KEY = "ADD_YOUR_API_KEY_HERE";
+    protected $_sApiKey = "ADD_YOUR_API_KEY_HERE";
     protected $_sOpenAiApiUrl = "https://api.openai.com/v1/completions";
     protected $_sOpenAiApiImageUrl = "https://api.openai.com/v1/images/generations";
 
     public $oCurl;
 
-    private $_iInfinityLoopCount = 0;
-
     public function __construct()
     {
         $this->oCurl = curl_init();
+    }
+
+    public function setApiKey($sApiKey)
+    {
+        $this->_API_KEY = $sApiKey;
+    }
+
+    public function setOpenAiApiUrl($sOpenAiApiUrl)
+    {
+        $this->_sOpenAiApiUrl = $sOpenAiApiUrl;
+    }
+
+    public function setOpenAiApiImageUrl($sOpenAiApiImageUrl)
+    {
+        $this->_sOpenAiApiImageUrl = $sOpenAiApiImageUrl;
     }
 
     public function initialize($requestType = "text" || "image")
@@ -70,7 +83,7 @@ class ChatGPT
 
         // CHECK HTML PROMPT
         if ($bHtml && ($iMaxTokens >= self::MIN_TOKENS) ) {
-            $sPrompt = $sPrompt . PHP_EOL . $this->_getChatGptInstruction($iLang);
+            $sPrompt = $sPrompt . PHP_EOL . $this->_getExtendedPrompt($iLang);
         }
 
         $data["model"] = $sModel;
@@ -99,7 +112,7 @@ class ChatGPT
         return $output;
     }
 
-    protected function _getChatGptInstruction($iLang): string
+    protected function _getExtendedPrompt($iLang): string
     {
         return '';
     }
