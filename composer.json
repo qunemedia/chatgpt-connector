@@ -26,7 +26,9 @@
     "issues": "https://github.com/qunemedia/chatgpt-connector/issues"
   },
   "require": {
-    "php": ">=7.4"
+    "php": ">=7.4",
+    "ext-json": "*",
+    "ext-curl": "*"
   },
   "autoload": {
     "psr-4": {
