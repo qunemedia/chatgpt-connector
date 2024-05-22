@@ -27,5 +27,10 @@
   },
   "require": {
     "php": ">=7.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "QuneMedia\\ChatGpt\\Connector\\": "src/"
+    }
   }
 }

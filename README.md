@@ -62,7 +62,7 @@ Email: info@qunemedia.com
 
 ## Credits
 
-* [Radu Lepadatu](https://github.com/Radulepy) for creating [`Radulepy/PHP-ChatGPT`](hhttps://github.com/Radulepy/PHP-ChatGPT/)
+* [Radu Lepadatu](https://github.com/Radulepy) for creating [`Radulepy/PHP-ChatGPT`](https://github.com/Radulepy/PHP-ChatGPT/)
 
 ## Copyright
 
