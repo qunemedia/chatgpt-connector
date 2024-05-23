@@ -18,9 +18,13 @@ class ChatGPT
 
     const MAX_CONTINUE_REQUESTS = 3;
 
-    protected $_sApiKey = "ADD_YOUR_API_KEY_HERE";
-    protected $_sOpenAiApiUrl = "https://api.openai.com/v1/completions";
-    protected $_sOpenAiApiImageUrl = "https://api.openai.com/v1/images/generations";
+    protected $_sApiKey = null;
+    protected $_sOpenAiApiUrl = null;
+    protected $_sOpenAiApiImageUrl = null;
+    protected $_sOpenAiApiTranslationUrl = null;
+
+    protected $_sModel = 'gpt-3.5-turbo';
+    protected $_sMode = 'text';
 
     public $oCurl;
 
@@ -29,9 +33,25 @@ class ChatGPT
         $this->oCurl = curl_init();
     }
 
+    private function _getApiKey(): string
+    {
+        return $this->_sApiKey;
+    }
+
     public function setApiKey($sApiKey)
     {
-        $this->_API_KEY = $sApiKey;
+        $this->_sApiKey = $sApiKey;
+    }
+
+    private function _getOpenAiApiUrl(): string
+    {
+        if ($this->_sOpenAiApiImageUrl == null) {
+            $aModel = OpenAiModels::get($this->_sModel);
+
+            $this->_sOpenAiApiUrl = $aModel['api']['url'];
+        }
+
+        return $this->_sOpenAiApiUrl;
     }
 
     public function setOpenAiApiUrl($sOpenAiApiUrl)
@@ -39,29 +59,58 @@ class ChatGPT
         $this->_sOpenAiApiUrl = $sOpenAiApiUrl;
     }
 
+    private function _getOpenAiApiImageUrl(): string
+    {
+        if ($this->_sOpenAiApiImageUrl == null) {
+            $aModel = OpenAiModels::get(OpenAiModels::getDefaultImageModel());
+
+            $this->_sOpenAiApiImageUrl = $aModel['api']['image_url'];
+        }
+
+        return $this->_sOpenAiApiImageUrl;
+    }
+
     public function setOpenAiApiImageUrl($sOpenAiApiImageUrl)
     {
         $this->_sOpenAiApiImageUrl = $sOpenAiApiImageUrl;
     }
 
-    public function initialize($requestType = "text" || "image")
+    private function _getOpenAiApiTranslationUrl(): string
+    {
+        return $this->_getOpenAiApiUrl();
+    }
+
+    private function _setModel($sModel)
+    {
+        $this->_sModel = $sModel;
+    }
+
+    public function setMode($sMode)
+    {
+        $this->_sMode = $sMode;
+    }
+
+    private function _initialize($sRequestType = "text" || "image" || "translation")
     {
         $this->oCurl = curl_init();
 
-        if ($requestType === 'image')
-            curl_setopt($this->oCurl, CURLOPT_URL, $this->_sOpenAiApiImageUrl);
-        if ($requestType === 'text')
-            curl_setopt($this->oCurl, CURLOPT_URL, $this->_sOpenAiApiUrl);
+        if ($sRequestType === 'image') {
+            curl_setopt($this->oCurl, CURLOPT_URL, $this->_getOpenAiApiImageUrl());
+        } elseif ($sRequestType === 'translation') {
+            curl_setopt($this->oCurl, CURLOPT_URL, $this->_getOpenAiApiTranslationUrl());
+        } else {
+            curl_setopt($this->oCurl, CURLOPT_URL, $this->_getOpenAiApiUrl());
+        }
 
         curl_setopt($this->oCurl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($this->oCurl, CURLOPT_POST, true);
 
-        $headers = array(
+        $aHeaders = array(
             "Content-Type: application/json",
-            "Authorization: Bearer $this->_API_KEY"
+            "Authorization: Bearer " . $this->_getApiKey()
         );
 
-        curl_setopt($this->oCurl, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($this->oCurl, CURLOPT_HTTPHEADER, $aHeaders);
     }
 
     /**
@@ -73,10 +122,15 @@ class ChatGPT
      * @param int $iMaxTokens The maximum number of tokens in the generated text (default: 1000).
      * @return array An array containing 'data' and 'error' keys, representing the generated text and any errors.
      */
-    public function createTextRequest($sPrompt, $sModel = 'gpt-3.5-turbo-instruct', $sTemperature = 0.7, $iMaxTokens = 1000, $bHtml = false, $iLang = null): array
+    public function createTextRequest($sPrompt, $sModel = 'gpt-3.5-turbo', $sTemperature = 0.7, $iMaxTokens = 1000, $bHtml = false, $iLang = null): array
     {
         curl_reset($this->oCurl);
-        $this->initialize('text');
+
+        // SET MODEL
+        $this->_setModel($sModel);
+
+        // INITIALIZE
+        $this->_initialize($this->_sMode);
 
         // CHECK MAX TOKENS
         $iMaxTokens = $this->_checkMaxTokens((int) $iMaxTokens);
@@ -86,30 +140,32 @@ class ChatGPT
             $sPrompt = $sPrompt . PHP_EOL . $this->_getExtendedPrompt($iLang);
         }
 
-        $data["model"] = $sModel;
-        $data["prompt"] = $sPrompt;
-        $data["temperature"] = (double) $sTemperature;
-        $data["max_tokens"] = $iMaxTokens;
+        $aData["model"] = $sModel;
+        $aData["prompt"] = $sPrompt;
+        $aData["temperature"] = (double) $sTemperature;
+        $aData["max_tokens"] = $iMaxTokens;
 
-        curl_setopt($this->oCurl, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($this->oCurl, CURLOPT_POSTFIELDS, json_encode($aData));
 
-        $response = curl_exec($this->oCurl);
-        $response = json_decode($response, true);
+        $aResponse = curl_exec($this->oCurl);
+        $aResponse = json_decode($aResponse, true);
 
         // CUSTOM ERROR CODES
-        if (isset($response['error']['message']) && $response['error']['code'] == '') {
-            if (strpos($response['error']['message'], 'Please reduce your prompt; or completion length.') !== false) {
-                $response['error']['code'] = 900;
+        if (isset($aResponse['error']['message']) && $aResponse['error']['code'] == '') {
+            if (strpos($aResponse['error']['message'], 'Please reduce your prompt; or completion length.') !== false) {
+                $aResponse['error']['code'] = 900;
             } else {
-                $response['error']['code'] = 999;
+                $aResponse['error']['code'] = 999;
             }
         }
 
-        $output['data'] = $response['choices'][0]['text'] ?? null;
-        $output['continue'] = $response['choices'][0]['finish_reason'] == 'length';
-        $output['error'] = $response['error']['code'] ?? null;
+        $aOutput["model"] = $sModel;
+        $aOutput['data'] = $aResponse['choices'][0]['text'] ?? null;
+        $aOutput['continue'] = $aResponse['choices'][0]['finish_reason'] == 'length';
+        $aOutput['error'] = $aResponse['error']['code'] ?? null;
+        $aOutput['error_msg'] = $aResponse['error']['message'];
 
-        return $output;
+        return $aOutput;
     }
 
     protected function _getExtendedPrompt($iLang): string
@@ -128,20 +184,20 @@ class ChatGPT
     public function generateImage($sPrompt, $sImageSize = '512x512', $iNumberOfImages = 1): array
     {
         curl_reset($this->oCurl);
-        $this->initialize('image');
+        $this->_initialize('image');
 
-        $data["prompt"] = $sPrompt;
-        $data["n"] = $iNumberOfImages;
-        $data["size"] = $sImageSize;
+        $aData["prompt"] = $sPrompt;
+        $aData["n"] = $iNumberOfImages;
+        $aData["size"] = $sImageSize;
 
-        curl_setopt($this->oCurl, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($this->oCurl, CURLOPT_POSTFIELDS, json_encode($aData));
 
         $response = curl_exec($this->oCurl);
         $response = json_decode($response, true);
 
-        $output['data'] = $response['data'][0]['url'] ?? null;
-        $output['error'] =  $response['error']['code'] ?? null;
-        return $output;
+        $aOutput['data'] = $response['data'][0]['url'] ?? null;
+        $aOutput['error'] =  $response['error']['code'] ?? null;
+        return $aOutput;
     }
 
     protected function _checkMaxTokens($iMaxTokens): int
