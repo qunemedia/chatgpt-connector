@@ -159,6 +159,7 @@ class ChatGPT
             }
         }
 
+        $aOutput["id"] = $aResponse['id'] ?? null;
         $aOutput["model"] = $sModel;
         $aOutput['data'] = $aResponse['choices'][0]['text'] ?? null;
         $aOutput['continue'] = $aResponse['choices'][0]['finish_reason'] == 'length';
