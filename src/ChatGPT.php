@@ -113,6 +113,30 @@ class ChatGPT
         curl_setopt($this->oCurl, CURLOPT_HTTPHEADER, $aHeaders);
     }
 
+    protected function _createRequest(array $aParams = [])
+    {
+        // INITIALIZE
+        $this->_initialize($this->_sMode);
+
+        // SET PARAMETERS
+        curl_setopt($this->oCurl, CURLOPT_POSTFIELDS, json_encode($aParams));
+
+        $sResponse = curl_exec($this->oCurl);
+        $iHttpCode = curl_getinfo($this->oCurl, CURLINFO_HTTP_CODE);
+
+        if ($sResponse === false) {
+            return ['error' => ['code' => 'CURL_ERROR', 'message' => curl_error($this->oCurl)]];
+        }
+
+        $aResponse = json_decode($sResponse, true);
+
+        if ($iHttpCode >= 400) {
+            return ['error' => ['code' => $iHttpCode, 'message' => $aResponse['error']['message'] ?? 'Unknown error']];
+        }
+
+        return $aResponse;
+    }
+
     /**
      * Generates a text response based on the given prompt using the specified parameters.
      *
@@ -129,9 +153,6 @@ class ChatGPT
         // SET MODEL
         $this->_setModel($sModel);
 
-        // INITIALIZE
-        $this->_initialize($this->_sMode);
-
         // CHECK MAX TOKENS
         $iMaxTokens = $this->_checkMaxTokens((int) $iMaxTokens);
 
@@ -140,31 +161,42 @@ class ChatGPT
             $sPrompt = $sPrompt . PHP_EOL . $this->_getExtendedPrompt($iLang);
         }
 
-        $aData["model"] = $sModel;
-        $aData["prompt"] = $sPrompt;
-        $aData["temperature"] = (double) $sTemperature;
-        $aData["max_tokens"] = $iMaxTokens;
+        $aParams = [
+            'model' => $this->_sModel,
+            'prompt' => $sPrompt,
+            'max_tokens' => $iMaxTokens,
+            'temperature' => (double) $sTemperature,
+            'top_p' => 1,
+            'frequency_penalty' => 0,
+            'presence_penalty' => 0,
+        ];
 
-        curl_setopt($this->oCurl, CURLOPT_POSTFIELDS, json_encode($aData));
-
-        $aResponse = curl_exec($this->oCurl);
-        $aResponse = json_decode($aResponse, true);
-
-        // CUSTOM ERROR CODES
-        if (isset($aResponse['error']['message']) && $aResponse['error']['code'] == '') {
-            if (strpos($aResponse['error']['message'], 'Please reduce your prompt; or completion length.') !== false) {
-                $aResponse['error']['code'] = 900;
-            } else {
-                $aResponse['error']['code'] = 999;
-            }
-        }
+        $aResponse = $this->_createRequest($aParams);
 
         $aOutput["id"] = $aResponse['id'] ?? null;
         $aOutput["model"] = $sModel;
         $aOutput['data'] = $aResponse['choices'][0]['text'] ?? null;
-        $aOutput['continue'] = $aResponse['choices'][0]['finish_reason'] == 'length';
+        // TODO: #64861 DEPRECATED - REMOVE IN FUTURE
+        $aOutput['continue'] = FALSE;
         $aOutput['error'] = $aResponse['error']['code'] ?? null;
         $aOutput['error_msg'] = $aResponse['error']['message'];
+
+        // HANDLING INCOMPLETE RESPONSE
+        if (isset($aResponse['choices'][0]['finish_reason']) && $aResponse['choices'][0]['finish_reason'] === 'length') {
+            $sContinuationPrompt = $sPrompt . $aResponse['choices'][0]['text'];
+
+            for ($i = 0; $i < self::MAX_CONTINUE_REQUESTS; $i++) {
+                $aParams['prompt'] = $sContinuationPrompt;
+                $aResponse = $this->_createRequest($aParams);
+                $aOutput['data'] .= $aResponse['choices'][0]['text'] ?? '';
+
+                if (isset($aResponse['choices'][0]['finish_reason']) && $aResponse['choices'][0]['finish_reason'] !== 'length') {
+                    break;
+                }
+
+                $sContinuationPrompt .= $aResponse['choices'][0]['text'];
+            }
+        }
 
         return $aOutput;
     }
